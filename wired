@@ -1,0 +1,364 @@
+1
+set ns [new Simulator]
+
+set tf [open ex1.tr w]
+$ns trace-all $tf
+
+set nf [open ex1.nam w]
+$ns namtrace-all $nf
+
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+
+$ns duplex-link $n0 $n2 2Mb 2ms DropTail
+$ns duplex-link $n1 $n2 2Mb 2ms DropTail
+$ns duplex-link $n2 $n3 0.4Mb 10ms DropTail
+$ns queue-limit $n1 $n2    5  
+
+set udp1 [new Agent/UDP]
+$ns attach-agent $n0 $udp1
+set null1 [new Agent/Null]
+$ns attach-agent $n3 $null1
+$ns connect $udp1 $null1
+set cbr1 [new Application/Traffic/CBR]
+$cbr1 attach-agent $udp1
+$ns at 1.1 "$cbr1 start"
+
+set tcp [new Agent/TCP]
+$ns attach-agent $n3 $tcp
+set sink [new Agent/TCPSink]
+$ns attach-agent $n1 $sink
+$ns connect $tcp $sink
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp
+
+$ns at 0.1 "$ftp start"
+
+$ns at 10.0 "finish"
+
+proc finish {} {
+	global ns tf nf
+	$ns flush-trace
+	close $tf
+	close $nf
+	puts "running nam..."
+	exec nam ex1.nam &
+	exit 0
+}
+
+$ns run
+
+
+
+
+2
+set ns [new Simulator]
+
+set tf [open ex2.tr w]
+$ns trace-all $tf
+set nf [open ex2.nam w]
+$ns namtrace-all $nf
+set cwind [open win2.tr w]
+
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+
+$ns duplex-link $n0 $n2 5Mb 2ms DropTail
+$ns duplex-link $n1 $n2 5Mb 2ms DropTail
+$ns duplex-link $n2 $n3 1.5Mb 10ms DropTail
+
+set tcp0 [new Agent/TCP]
+$ns attach-agent $n0 $tcp0
+set sink0 [new Agent/TCPSink]
+$ns attach-agent $n3 $sink0
+$ns connect $tcp0 $sink0
+
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp0
+
+$ns at 1.2 "$ftp start"
+set tcp1 [new Agent/TCP]
+$ns attach-agent $n1 $tcp1
+set sink1 [new Agent/TCPSink]
+$ns attach-agent $n0 $sink1
+$ns connect $tcp1 $sink1
+set telnet [new Application/Telnet]
+$telnet attach-agent $tcp1
+
+$ns at 1.5 "$telnet start"
+$ns at 10.0 "finish"
+proc plotWindow {tcpSource file} {
+global ns
+set time 0.01
+set now [$ns now]
+set cwnd [$tcpSource set cwnd_]
+puts $file "$now $cwnd"
+$ns at [expr $now+$time] "plotWindow $tcpSource $file" }
+$ns at 2.0 "plotWindow $tcp0 $cwind"
+$ns at 5.5 "plotWindow $tcp1 $cwind"
+proc finish {} {
+	global ns tf nf cwind
+	$ns flush-trace
+	close $tf
+	close $nf
+	close $cwind
+	puts "running nam..."
+	puts "FTP PACKETS.."
+	puts "Telnet PACKETS.."
+	exec nam ex2.nam &
+        exec xgraph win2.tr & 
+	exit 0
+}
+$ns run
+
+3
+set ns [new Simulator]
+set tf [open ex4.tr w]
+$ns trace-all $tf
+set nf [open ex4.nam w]
+$ns namtrace-all $nf
+set cwind [open win4.tr w]
+
+$ns color 1 Blue 
+$ns color 2 Red
+
+$ns rtproto DV
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+set n4 [$ns node]
+set n5 [$ns node]
+
+$ns duplex-link $n0 $n1 0.3Mb 10ms DropTail
+$ns duplex-link $n1 $n2 0.3Mb 10ms DropTail
+$ns duplex-link $n2 $n3 0.3Mb 10ms DropTail
+$ns duplex-link $n1 $n4 0.3Mb 10ms DropTail
+$ns duplex-link $n3 $n5 0.5Mb 10ms DropTail
+$ns duplex-link $n4 $n5 0.5Mb 10ms DropTail
+
+$ns duplex-link-op $n0 $n1 orient right
+$ns duplex-link-op $n1 $n2 orient right
+$ns duplex-link-op $n2 $n3 orient up
+$ns duplex-link-op $n1 $n4 orient up-left
+$ns duplex-link-op $n3 $n5 orient up-left
+$ns duplex-link-op $n4 $n5 orient right-up
+
+set tcp [new Agent/TCP]
+$ns attach-agent $n0 $tcp
+set sink [new Agent/TCPSink]
+$ns attach-agent $n5 $sink
+$ns connect $tcp $sink
+$tcp set fid_ 1
+
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp
+
+$ns rtmodel-at 1.0 down $n1 $n4
+$ns rtmodel-at 3.0 up $n1 $n4
+
+$ns at 0.1 "$ftp start"
+
+$ns at 12.0 "finish"
+proc plotWindow {tcpSource file} {
+global ns
+set time 0.01
+set now [$ns now]
+set cwnd [$tcpSource set cwnd_]
+puts $file "$now $cwnd"
+$ns at [expr $now+$time] "plotWindow $tcpSource $file" }
+$ns at 1.0 "plotWindow $tcp $cwind"
+
+proc finish {} {
+	global ns tf nf cwind
+	$ns flush-trace
+	close $tf
+	close $nf
+	exec nam ex4.nam &
+        exec xgraph win4.tr & 
+	exit 0
+}
+$ns run
+
+
+4
+#Create a ns simulator
+set ns [new Simulator]
+
+#Open the NS trace file
+set tracefile [open ex5.tr w]
+$ns trace-all $tracefile
+
+#Open the NAM trace file
+set namfile [open ex5.nam w]
+$ns namtrace-all $namfile
+
+#Create 2 nodes
+set s [$ns node]
+set c [$ns node]
+
+$ns color 1 Blue
+
+#Create labels for nodes
+$s label "Server"
+$c label "Client"
+
+#Create links between nodes
+$ns duplex-link $s $c 10Mb 22ms DropTail
+
+#Give node position (for NAM)
+$ns duplex-link-op $s $c orient right
+	
+#Setup a TCP connection for node s(server)
+set tcp0 [new Agent/TCP]
+$ns attach-agent $s $tcp0
+$tcp0 set packetSize_ 1500
+
+#Setup a TCPSink connection for node c(client)
+set sink0 [new Agent/TCPSink]
+$ns attach-agent $c $sink0
+$ns connect $tcp0 $sink0
+#Setup a FTP Application over TCP connection
+set ftp0 [new Application/FTP]
+$ftp0 attach-agent $tcp0
+$tcp0 set fid_ 1
+proc finish { } {
+	global ns tracefile namfile 
+	$ns flush-trace
+	close $tracefile
+    	close $namfile
+    	exec nam ex5.nam &
+			}
+$ns at 0.01 "$ftp0 start"
+$ns at 15.0 "$ftp0 stop"
+$ns at 15.1 "finish"
+$ns run
+
+5
+#Create an event scheduler wit multicast turned on
+set ns [new Simulator -multicast on]
+#$ns multicast
+#Turn on Tracing
+set tf [open mcast.tr w]
+$ns trace-all $tf
+# Turn on nam Tracing
+set fd [open mcast.nam w]
+$ns namtrace-all $fd
+
+# Create nodes
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+set n4 [$ns node]
+set n5 [$ns node]
+set n6 [$ns node]
+set n7 [$ns node]
+ 
+# Create links
+$ns duplex-link $n0 $n2 1.5Mb 10ms DropTail
+$ns duplex-link $n1 $n2 1.5Mb 10ms DropTail
+$ns duplex-link $n2 $n3 1.5Mb 10ms DropTail
+$ns duplex-link $n3 $n4 1.5Mb 10ms DropTail
+$ns duplex-link $n3 $n7 1.5Mb 10ms DropTail
+$ns duplex-link $n4 $n5 1.5Mb 10ms DropTail
+$ns duplex-link $n4 $n6 1.5Mb 10ms DropTail
+
+# Routing protocol: say distance vector
+#Protocols: CtrMcast, DM, ST, BST
+set mproto DM
+set mrthandle [$ns mrtproto $mproto {}]
+
+# Allocate group addresses
+set group1 [Node allocaddr]
+set group2 [Node allocaddr]
+
+# UDP Transport agent for the traffic source
+set udp0 [new Agent/UDP]
+$ns attach-agent $n0 $udp0
+$udp0 set dst_addr_ $group1
+$udp0 set dst_port_ 0
+set cbr1 [new Application/Traffic/CBR]
+$cbr1 attach-agent $udp0
+
+# Transport agent for the traffic source
+set udp1 [new Agent/UDP]
+$ns attach-agent $n1 $udp1
+$udp1 set dst_addr_ $group2
+$udp1 set dst_port_ 0
+set cbr2 [new Application/Traffic/CBR]
+$cbr2 attach-agent $udp1
+
+# Create receiver
+set rcvr1 [new Agent/Null]
+$ns attach-agent $n2 $rcvr1
+$ns at 1.0 "$n2 join-group $rcvr1 $group1"
+
+set rcvr2 [new Agent/Null]
+$ns attach-agent $n3 $rcvr2
+$ns at 1.5 "$n3 join-group $rcvr2 $group1"
+
+set rcvr3 [new Agent/Null]
+$ns attach-agent $n4 $rcvr3
+$ns at 2.0 "$n4 join-group $rcvr3 $group1"
+
+set rcvr4 [new Agent/Null]
+$ns attach-agent $n5 $rcvr4
+$ns at 2.5 "$n5 join-group $rcvr4 $group2"
+
+set rcvr5 [new Agent/Null]
+$ns attach-agent $n6 $rcvr5
+$ns at 3.0 "$n6 join-group $rcvr5 $group2"
+
+set rcvr6 [new Agent/Null]
+$ns attach-agent $n7 $rcvr6
+$ns at 3.5 "$n7 join-group $rcvr6 $group2"
+
+$ns at 4.0 "$n2 leave-group $rcvr1 $group1"
+$ns at 4.5 "$n3 leave-group $rcvr2 $group1"
+$ns at 5.0 "$n4 leave-group $rcvr3 $group1"
+
+$ns at 5.5 "$n5 leave-group $rcvr4 $group2"
+$ns at 6.0 "$n6 leave-group $rcvr5 $group2"
+$ns at 6.5 "$n7 leave-group $rcvr6 $group2"
+ 
+# Schedule events
+$ns at 0.5 "$cbr1 start"
+$ns at 9.5 "$cbr1 stop"
+$ns at 0.5 "$cbr2 start"
+$ns at 9.5 "$cbr2 stop"
+
+$ns at 10.0 "finish"
+
+proc finish {} {
+	global ns tf fd
+	$ns flush-trace
+	close $tf
+	close $fd
+	exec nam mcast.nam &
+	exit 0
+}
+# For nam
+# Group 0 source
+#$udp0 set fid_ 1
+#$n0 color red
+$n0 label "Source 1"
+# Group 1 source
+#$udp1 set fid_ 2
+#$n1 color green
+$n1 label "Source 2"
+
+#Colors for packets from two mcast groups
+$ns color 1 red
+$ns color 2 green
+$n5 label "Receiver 1"
+$n5 color blue
+$n6 label "Receiver 2"
+$n6 color blue
+$n7 label "Receiver 3"
+$n7 color blue
+$ns run
